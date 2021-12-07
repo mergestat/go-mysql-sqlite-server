@@ -43,11 +43,6 @@ func (inserter *rowInserter) Insert(ctx *sql.Context, row sql.Row) error {
 		colNames[c] = fmt.Sprintf("'%s'", col.Name)
 	}
 
-	// vals := make([]interface{}, len(row))
-	// for v, val := range row {
-	// 	vals[v] = fmt.Sprintf("'%v'", val)
-	// }
-
 	sql, args, err := sq.Insert(inserter.table.name).
 		Columns(colNames...).
 		Values(row...).

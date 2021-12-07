@@ -4,42 +4,28 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
-	"strings"
 	"text/template"
 
-	"crawshaw.io/sqlite"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
-func inferType(sqliteType string) sql.Type {
-	t := strings.ToLower(sqliteType)
-	switch {
-	case strings.Contains(t, "int"):
-		return sql.Int64
-	case strings.Contains(t, "varchar"), strings.Contains(t, "text"):
-		return sql.Text
-	default:
-		return sql.Text
+// mustInferType receives a MySQL type name, and resolves it to a sql.Type, or panics if it cannot.
+// It's a little odd how it does it - it creates a dummy `CREATE TABLE` statement with a single column
+// of the supplied type. It uses the vitess sql parser to turn the statement into an AST
+// (which will be of a known structure) and type-asserts it into the DDL node to retrieve the sqlparser.ColumnType.
+// This is allso so that we can use sql.ColumnTypeToType to resolve to a sql.Type
+func mustInferType(typeName string) sql.Type {
+	stmt, err := sqlparser.Parse(fmt.Sprintf("CREATE TABLE t (c %s);", typeName))
+	if err != nil {
+		panic(err)
 	}
-}
 
-func toSQLiteType(t query.Type) sqlite.ColumnType {
-	switch t {
-	case query.Type_NULL_TYPE:
-		return sqlite.SQLITE_NULL
-	case query.Type_INT8, query.Type_UINT8,
-		query.Type_INT16, query.Type_UINT16,
-		query.Type_INT24, query.Type_UINT24,
-		query.Type_INT32, query.Type_UINT32,
-		query.Type_INT64, query.Type_UINT64:
-		return sqlite.SQLITE_INTEGER
-	case query.Type_FLOAT32, query.Type_FLOAT64, query.Type_DECIMAL:
-		return sqlite.SQLITE_FLOAT
-	case query.Type_BINARY, query.Type_BIT:
-		return sqlite.SQLITE_BLOB
-	default:
-		return sqlite.SQLITE_TEXT
+	parsed := stmt.(*sqlparser.DDL)
+	if t, err := sql.ColumnTypeToType(&parsed.TableSpec.Columns[0].Type); err != nil {
+		panic(err)
+	} else {
+		return t
 	}
 }
 
@@ -56,7 +42,7 @@ func createTableSQL(tableName string, schema sql.Schema) (string, error) {
 			return c < len(schema)-1
 		},
 		"colType": func(colIndex int) string {
-			return toSQLiteType(schema[colIndex].Type.Type()).String()
+			return schema[colIndex].Type.String()
 		},
 		"quote": strconv.Quote,
 	}

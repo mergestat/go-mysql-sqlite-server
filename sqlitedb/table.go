@@ -44,9 +44,10 @@ func (t *Table) Schema() sql.Schema {
 		} else if !hasRow {
 			break
 		}
+
 		col := &sql.Column{
 			Name:          stmt.GetText("name"),
-			Type:          inferType(stmt.GetText("type")),
+			Type:          mustInferType(stmt.GetText("type")),
 			Default:       nil,
 			AutoIncrement: false,
 			Nullable:      stmt.GetInt64("notnull") == 0,
