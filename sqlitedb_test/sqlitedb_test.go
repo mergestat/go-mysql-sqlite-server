@@ -9,7 +9,6 @@ import (
 	"crawshaw.io/sqlite/sqlitex"
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/mergestat/go-mysql-sqlite-server/sqlitedb"
 )
 
@@ -43,7 +42,6 @@ func (harness *SQLiteDBHarness) NewDatabases(names ...string) []sql.Database {
 }
 
 func (harness *SQLiteDBHarness) NewDatabaseProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
-	dbs = append(dbs, information_schema.NewInformationSchemaDatabase())
 	return sqlitedb.NewProvider(dbs...)
 }
 
