@@ -32,7 +32,7 @@ func mustInferType(typeName string) sql.Type {
 func createTableSQL(tableName string, schema sql.Schema) (string, error) {
 	const declare = `CREATE TABLE {{ .TableName }} (
 		{{- range $c, $col := .Columns }}
-			{{ quote .Name }} {{ colType $c }}{{ if columnComma $c }},{{ end }}
+			{{ quote .Name }} {{ colType $c }}{{ if notNull $c }} NOT NULL{{ end }}{{ if columnComma $c }},{{ end }}
 		{{- end }}
 	  )`
 
@@ -43,6 +43,9 @@ func createTableSQL(tableName string, schema sql.Schema) (string, error) {
 		},
 		"colType": func(colIndex int) string {
 			return schema[colIndex].Type.String()
+		},
+		"notNull": func(colIndex int) bool {
+			return !schema[colIndex].Nullable
 		},
 		"quote": strconv.Quote,
 	}

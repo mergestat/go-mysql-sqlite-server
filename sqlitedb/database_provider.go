@@ -2,6 +2,7 @@ package sqlitedb
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 
@@ -24,7 +25,7 @@ func NewProvider(dbs ...sql.Database) *provider {
 		if !ok {
 			continue
 		}
-		databases[strings.ToLower(db.name)] = db
+		databases[strings.ToLower(db.Name())] = db
 	}
 	return &provider{
 		databases: databases,
@@ -37,7 +38,7 @@ func (p *provider) Database(name string) (sql.Database, error) {
 	name = strings.ToLower(name)
 
 	if db, ok := p.databases[name]; !ok {
-		return nil, ErrCouldNotFindDatabase
+		return nil, sql.ErrDatabaseNotFound.New()
 	} else {
 		return db, nil
 	}
@@ -56,13 +57,18 @@ func (p *provider) AllDatabases() []sql.Database {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
 
-	out := make([]sql.Database, len(p.databases))
+	all := make([]sql.Database, len(p.databases))
 	var i int
 	for _, db := range p.databases {
-		out[i] = db
+		all[i] = db
 		i++
 	}
-	return out
+
+	sort.Slice(all, func(i, j int) bool {
+		return all[i].Name() < all[j].Name()
+	})
+
+	return all
 }
 
 func (p *provider) CreateDatabase(ctx *sql.Context, name string) error {

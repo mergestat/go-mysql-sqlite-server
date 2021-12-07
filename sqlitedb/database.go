@@ -15,8 +15,10 @@ type Database struct {
 
 // DatabaseOptions are options for managing the SQLite backend
 type DatabaseOptions struct {
-	// PreventInserts will block
+	// PreventInserts will block table insertions
 	PreventInserts bool
+	// PreventCreateTable will block table creation
+	PreventCreateTable bool
 }
 
 func NewDatabase(name string, pool *sqlitex.Pool, options *DatabaseOptions) *Database {
@@ -75,6 +77,10 @@ func (db *Database) GetTableNames(ctx *sql.Context) ([]string, error) {
 }
 
 func (db *Database) CreateTable(ctx *sql.Context, name string, schema sql.Schema) error {
+	if db.options.PreventCreateTable {
+		return ErrNoCreateTableAllowed
+	}
+
 	conn := db.pool.Get(ctx)
 	if conn == nil {
 		return ErrNoSQLiteConn
